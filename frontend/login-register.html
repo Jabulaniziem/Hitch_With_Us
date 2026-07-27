@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#14213D" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Hitch" />
+  <title>Hitch | Login / Register</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:
+    linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,.72)),
+    url("images/red-pin-on-the-map.jpeg");
+
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+}
+
+    .card {
+      width: 100%;
+      max-width: 450px;
+      background: rgba(255, 255, 255, 0.93);
+      backdrop-filter: blur(14px);
+      border-radius: 24px;
+      padding: 42px;
+      box-shadow: 0 30px 90px rgba(0,0,0,0.45);
+      animation: fade 0.6s ease;
+    }
+
+    @keyframes fade {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+    .logo {
+      display: flex;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .logo h2 {
+      font-size: 30px;
+      font-weight: 600;
+      padding: 2px 8px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #111;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    .auth-toggle {
+      display: flex;
+      background: #F2F2F2;
+      padding: 6px;
+      border-radius: 14px;
+      margin-bottom: 28px;
+    }
+
+    .auth-toggle button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.25s;
+    }
+
+    .auth-toggle button.active {
+      background: black;
+      color: white;
+    }
+
+    .role-toggle {
+      display: none;
+      background: #F2F2F2;
+      padding: 6px;
+      border-radius: 14px;
+      margin-bottom: 25px;
+    }
+
+    .role-toggle button {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.25s;
+    }
+
+    .role-toggle button.active {
+      background: black;
+      color: white;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      background: #F4F4F4;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      font-size: 15px;
+      transition: 0.25s;
+    }
+
+    input:focus {
+      outline: none;
+      background: white;
+      box-shadow: 0 0 0 2px black;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .row > div {
+      flex: 1;
+    }
+
+    .submit {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background: black;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+
+    .submit:hover {
+      background: #222;
+    }
+
+    .submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #message {
+      margin-top: 18px;
+      text-align: center;
+      display: none;
+      font-weight: 600;
+    }
+
+    .error {
+      color: #d32f2f;
+    }
+
+    .success {
+      color: #1b8a3d;
+    }
+
+    #registerFields,
+    #vehicleFields,
+    #registerRole {
+      display: none;
+    }
+
+    @media(max-width: 500px) {
+      .card {
+        padding: 28px;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .logo h2 {
+        font-size: 28px;
+      }
+
+      .row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo">
+       <div class="brand">
+    <img src="images/hitch logo.png" alt="Hitch With Us Logo" style="width: 56px; height: 56px; border-radius: 14px;">
+        <h2>Hitch With Us</h2>
+</div>
+    </div>
+
+    <h1 id="title">Welcome Back</h1>
+    <p class="subtitle" id="subtitle">Sign in to request rides or start driving.</p>
+
+    <div class="auth-toggle">
+      <button type="button" id="loginTab" class="active">Login</button>
+      <button type="button" id="registerTab">Register</button>
+    </div>
+
+    <div class="role-toggle" id="registerRole">
+      <button type="button" id="riderTab" class="active">Rider</button>
+      <button type="button" id="driverTab">Driver</button>
+    </div>
+
+    <form id="authForm">
+      <div id="registerFields">
+        <label>Full Name</label>
+        <input type="text" id="fullName" placeholder="Enter your full name" />
+
+        <label>Phone Number</label>
+        <input type="tel" id="phoneNumber" placeholder="0821234567" />
+
+        <label>Email (optional)</label>
+        <input type="email" id="email" placeholder="you@example.com" />
+      </div>
+
+      <div id="loginIdentifierField">
+        <label>Phone Number or Email</label>
+        <input type="text" id="loginIdentifier" placeholder="0821234567 or you@example.com" />
+      </div>
+
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Enter your password" required />
+      <div id="forgotPasswordRow" style="margin-top:-10px; margin-bottom:18px; text-align:right;">
+        <a href="#" id="forgotPasswordLink" style="font-size:13px; color:#666; text-decoration:none; font-weight:600;">Forgot password?</a>
+      </div>
+
+      <div id="vehicleFields">
+        <label>Vehicle Make</label>
+        <input type="text" id="vehicleMake" placeholder="e.g. Toyota" />
+
+        <div class="row">
+          <div>
+            <label>Model</label>
+            <input type="text" id="vehicleModel" placeholder="e.g. Corolla" />
+          </div>
+          <div>
+            <label>Color</label>
+            <input type="text" id="vehicleColor" placeholder="e.g. White" />
+          </div>
+        </div>
+
+        <label>License Plate</label>
+        <input type="text" id="vehiclePlate" placeholder="e.g. FS111AAA" />
+      </div>
+
+      <button type="submit" class="submit" id="submitBtn">Sign In</button>
+      <div id="message"></div>
+    </form>
+
+    <div id="authAlternatives">
+      <div style="display:flex; align-items:center; gap:10px; margin:20px 0;">
+        <div style="flex:1; height:1px; background:#eee;"></div>
+        <span style="font-size:12px; color:#999;">OR</span>
+        <div style="flex:1; height:1px; background:#eee;"></div>
+      </div>
+
+      <!--
+        Google Sign-In setup (required before this button works):
+        1. Go to https://console.cloud.google.com/ → create a project (or use an existing one)
+        2. APIs & Services → Credentials → Create Credentials → OAuth client ID → Web application
+        3. Under "Authorized JavaScript origins", add the exact URL(s) you'll load this page from,
+           e.g. http://localhost:3001 and your ngrok URL (note: free ngrok URLs change each
+           restart, so you'll need to re-add the new one each time you test with a fresh tunnel)
+        4. Copy the generated Client ID and paste it into data-client_id below
+      -->
+      <div id="g_id_onload"
+        data-client_id="YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com"
+        data-callback="handleGoogleSignIn">
+      </div>
+      <div class="g_id_signin" style="display:flex; justify-content:center;" data-type="standard" data-width="250"></div>
+    </div>
+
+    <form id="forgotPasswordForm" style="display:none; margin-top:20px;">
+      <label>Phone Number or Email</label>
+      <input type="text" id="forgotIdentifier" placeholder="0821234567 or you@example.com" required />
+
+      <label>New Password</label>
+      <input type="password" id="forgotNewPassword" placeholder="At least 6 characters" required minlength="6" />
+
+      <button type="submit" class="submit" id="forgotSubmitBtn">Reset Password</button>
+      <div id="forgotMessage" style="margin-top:14px; text-align:center; display:none; font-weight:600;"></div>
+      <p style="text-align:center; margin-top:14px;"><a href="#" id="cancelForgot" style="font-size:13px; color:#666; font-weight:600;">Back to sign in</a></p>
+    </form>
+  </div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // Backend address — derived from whatever host loaded this page, so it
+    // works the same on localhost, over LAN (friends on the same Wi-Fi), etc.
+    const API_BASE = window.location.origin;
+
+    const loginTab = document.getElementById('loginTab');
+    const registerTab = document.getElementById('registerTab');
+    const title = document.getElementById('title');
+    const subtitle = document.getElementById('subtitle');
+    const registerFields = document.getElementById('registerFields');
+    const loginIdentifierField = document.getElementById('loginIdentifierField');
+    const registerRole = document.getElementById('registerRole');
+    const vehicleFields = document.getElementById('vehicleFields');
+    const riderTab = document.getElementById('riderTab');
+    const driverTab = document.getElementById('driverTab');
+    const form = document.getElementById('authForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const message = document.getElementById('message');
+
+    let mode = 'login';
+    let selectedRole = 'rider';
+
+    function setMode(newMode) {
+      mode = newMode;
+
+      loginTab.classList.toggle('active', mode === 'login');
+      registerTab.classList.toggle('active', mode === 'register');
+
+      if (mode === 'login') {
+        title.textContent = 'Welcome Back';
+        subtitle.textContent = 'Sign in to request rides or start driving.';
+        registerFields.style.display = 'none';
+        loginIdentifierField.style.display = 'block';
+        registerRole.style.display = 'none';
+        vehicleFields.style.display = 'none';
+        submitBtn.textContent = 'Sign In';
+      } else {
+        title.textContent = 'Create Your Account';
+        subtitle.textContent = 'Join Hitch as a rider or driver.';
+        registerFields.style.display = 'block';
+        loginIdentifierField.style.display = 'none';
+        registerRole.style.display = 'flex';
+        submitBtn.textContent = 'Create Account';
+      }
+
+      message.style.display = 'none';
+    }
+
+    loginTab.addEventListener('click', () => setMode('login'));
+    registerTab.addEventListener('click', () => setMode('register'));
+
+    riderTab.addEventListener('click', () => {
+      selectedRole = 'rider';
+      riderTab.classList.add('active');
+      driverTab.classList.remove('active');
+      vehicleFields.style.display = 'none';
+    });
+
+    driverTab.addEventListener('click', () => {
+      selectedRole = 'driver';
+      driverTab.classList.add('active');
+      riderTab.classList.remove('active');
+      vehicleFields.style.display = 'block';
+    });
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = type;
+      message.style.display = 'block';
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = mode === 'login' ? 'Signing In...' : 'Creating Account...';
+      message.style.display = 'none';
+
+      if (mode === 'login') {
+        const payload = {
+          identifier: document.getElementById('loginIdentifier').value.trim(),
+          password: document.getElementById('password').value
+        };
+
+        fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+          .then(res => res.json().then(data => ({ ok: res.ok, data })))
+          .then(({ ok, data }) => {
+            if (!ok) {
+              showMessage(data.error || 'Login failed', 'error');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+              return;
+            }
+
+            localStorage.setItem('hitch_user', JSON.stringify(data.user));
+            showMessage('Signed in! Redirecting...', 'success');
+
+            setTimeout(() => {
+              const role = data.user.role;
+              window.location.href = role === 'driver'
+                ? 'driver-simulator.html'
+                : 'index.html';
+            }, 700);
+          })
+          .catch(err => {
+            showMessage('Network error: ' + err.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+          });
+
+      } else {
+        const payload = {
+          full_name: document.getElementById('fullName').value.trim(),
+          phone_number: document.getElementById('phoneNumber').value.trim(),
+          email: document.getElementById('email').value.trim() || null,
+          password: document.getElementById('password').value,
+          role: selectedRole
+        };
+
+        if (selectedRole === 'driver') {
+          payload.vehicle = {
+            make: document.getElementById('vehicleMake').value.trim(),
+            model: document.getElementById('vehicleModel').value.trim(),
+            color: document.getElementById('vehicleColor').value.trim(),
+            license_plate: document.getElementById('vehiclePlate').value.trim()
+          };
+        }
+
+        fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+          .then(res => res.json().then(data => ({ ok: res.ok, data })))
+          .then(({ ok, data }) => {
+            if (!ok) {
+              showMessage(data.error || 'Registration failed', 'error');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Create Account';
+              return;
+            }
+
+            localStorage.setItem('hitch_user', JSON.stringify(data.user));
+            showMessage('Account created! Redirecting...', 'success');
+
+            setTimeout(() => {
+              window.location.href = selectedRole === 'driver'
+                ? 'driver-simulator.html'
+                : 'index.html';
+            }, 900);
+          })
+          .catch(err => {
+            showMessage('Network error: ' + err.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account';
+          });
+      }
+    });
+
+    // ---- Forgot password ----
+    const authForm = document.getElementById('authForm');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const cancelForgot = document.getElementById('cancelForgot');
+    const forgotSubmitBtn = document.getElementById('forgotSubmitBtn');
+    const forgotMessage = document.getElementById('forgotMessage');
+
+    forgotPasswordLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      authForm.style.display = 'none';
+      document.querySelector('.auth-toggle').style.display = 'none';
+      document.getElementById('authAlternatives').style.display = 'none';
+      forgotPasswordForm.style.display = 'block';
+    });
+
+    cancelForgot.addEventListener('click', function (e) {
+      e.preventDefault();
+      forgotPasswordForm.style.display = 'none';
+      document.querySelector('.auth-toggle').style.display = 'flex';
+      document.getElementById('authAlternatives').style.display = 'block';
+      authForm.style.display = 'block';
+    });
+
+    forgotPasswordForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      forgotSubmitBtn.disabled = true;
+      forgotSubmitBtn.textContent = 'Resetting...';
+      forgotMessage.style.display = 'none';
+
+      const payload = {
+        identifier: document.getElementById('forgotIdentifier').value.trim(),
+        new_password: document.getElementById('forgotNewPassword').value
+      };
+
+      fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          forgotSubmitBtn.disabled = false;
+          forgotSubmitBtn.textContent = 'Reset Password';
+
+          if (!ok) {
+            forgotMessage.textContent = data.error || 'Could not reset password';
+            forgotMessage.className = 'error';
+            forgotMessage.style.display = 'block';
+            return;
+          }
+
+          forgotMessage.textContent = 'Password reset! You can sign in now.';
+          forgotMessage.className = 'success';
+          forgotMessage.style.display = 'block';
+
+          setTimeout(() => {
+            forgotPasswordForm.reset();
+            forgotPasswordForm.style.display = 'none';
+            document.querySelector('.auth-toggle').style.display = 'flex';
+            authForm.style.display = 'block';
+          }, 1500);
+        })
+        .catch(err => {
+          forgotSubmitBtn.disabled = false;
+          forgotSubmitBtn.textContent = 'Reset Password';
+          forgotMessage.textContent = 'Network error: ' + err.message;
+          forgotMessage.className = 'error';
+          forgotMessage.style.display = 'block';
+        });
+    });
+
+    // ---- Google Sign-In ----
+    // Called automatically by Google's script once the user picks an account.
+    function handleGoogleSignIn(response) {
+      // response.credential is a signed JWT from Google containing the user's identity.
+      // Decoding it here client-side is fine for reading basic profile info (this is not
+      // a secure verification step — for production, verify the token server-side instead).
+      const payloadBase64 = response.credential.split('.')[1];
+      const decoded = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+
+      fetch(`${API_BASE}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: decoded.email,
+          full_name: decoded.name,
+          google_id: decoded.sub,
+          role: selectedRole
+        })
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok) {
+            showMessage(data.error || 'Google sign-in failed', 'error');
+            return;
+          }
+          localStorage.setItem('hitch_user', JSON.stringify(data.user));
+          showMessage('Signed in with Google! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = data.user.role === 'driver' ? 'driver-simulator.html' : 'index.html';
+          }, 700);
+        })
+        .catch(err => showMessage('Network error: ' + err.message, 'error'));
+    }
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(err => console.error("SW registration failed:", err));
+    }
+  </script>
+</body>
+</html>
