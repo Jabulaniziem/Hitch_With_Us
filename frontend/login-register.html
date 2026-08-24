@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Hitch" />
-  <title>Hitch | Login / Register</title>
+  <title>Hitch With Us | Login / Register</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,20 +24,19 @@
       font-family: 'Inter', sans-serif;
     }
 
-    body{
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-
-    background:
-    linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,.72)),
-    url("images/red-pin-on-the-map.jpeg");
-
-    background-size:cover;
-    background-position:center;
-    background-repeat:no-repeat;
-}
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background:
+        linear-gradient(rgba(0,0,0,.72), rgba(0,0,0,.72)),
+        url("images/red-pin-on-the-map.jpeg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
 
     .card {
       width: 100%;
@@ -51,20 +50,15 @@
     }
 
     @keyframes fade {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 13px;
-}
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
 
     .logo {
       display: flex;
@@ -183,29 +177,18 @@
       transition: 0.25s;
     }
 
-    .submit:hover {
-      background: #222;
-    }
+    .submit:hover { background: #222; }
+    .submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .submit:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    #message {
+    #message, #forgotMessage {
       margin-top: 18px;
       text-align: center;
       display: none;
       font-weight: 600;
     }
 
-    .error {
-      color: #d32f2f;
-    }
-
-    .success {
-      color: #1b8a3d;
-    }
+    .error { color: #d32f2f; }
+    .success { color: #1b8a3d; }
 
     #registerFields,
     #vehicleFields,
@@ -213,22 +196,13 @@
       display: none;
     }
 
+    #forgotStep2 { display: none; }
+
     @media(max-width: 500px) {
-      .card {
-        padding: 28px;
-      }
-
-      h1 {
-        font-size: 28px;
-      }
-
-      .logo h2 {
-        font-size: 28px;
-      }
-
-      .row {
-        flex-direction: column;
-      }
+      .card { padding: 28px; }
+      h1 { font-size: 28px; }
+      .logo h2 { font-size: 28px; }
+      .row { flex-direction: column; }
     }
   </style>
 </head>
@@ -236,10 +210,10 @@
 
   <div class="card">
     <div class="logo">
-       <div class="brand">
-    <img src="images/hitch logo.png" alt="Hitch With Us Logo" style="width: 56px; height: 56px; border-radius: 14px;">
+      <div class="brand">
+        <img src="images/hitch logo.png" alt="Hitch With Us Logo" style="width: 56px; height: 56px; border-radius: 14px;">
         <h2>Hitch With Us</h2>
-</div>
+      </div>
     </div>
 
     <h1 id="title">Welcome Back</h1>
@@ -312,27 +286,35 @@
         Google Sign-In setup (required before this button works):
         1. Go to https://console.cloud.google.com/ → create a project (or use an existing one)
         2. APIs & Services → Credentials → Create Credentials → OAuth client ID → Web application
-        3. Under "Authorized JavaScript origins", add the exact URL(s) you'll load this page from,
-           e.g. http://localhost:3001 and your ngrok URL (note: free ngrok URLs change each
-           restart, so you'll need to re-add the new one each time you test with a fresh tunnel)
+        3. Under "Authorized JavaScript origins", add the exact URL(s) you'll load this page from
         4. Copy the generated Client ID and paste it into data-client_id below
       -->
       <div id="g_id_onload"
-        data-client_id="YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com"
+        data-client_id="539345687642-mbjf7suqk03h6ba8r1mpuf2h85m7r328.apps.googleusercontent.com"
         data-callback="handleGoogleSignIn">
       </div>
       <div class="g_id_signin" style="display:flex; justify-content:center;" data-type="standard" data-width="250"></div>
     </div>
 
+    <!-- Forgot password — Step 1: request a code -->
     <form id="forgotPasswordForm" style="display:none; margin-top:20px;">
-      <label>Phone Number or Email</label>
-      <input type="text" id="forgotIdentifier" placeholder="0821234567 or you@example.com" required />
+      <div id="forgotStep1">
+        <label>Phone Number or Email</label>
+        <input type="text" id="forgotIdentifier" placeholder="0821234567 or you@example.com" required />
+        <button type="submit" class="submit" id="forgotRequestBtn">Send Reset Code</button>
+      </div>
 
-      <label>New Password</label>
-      <input type="password" id="forgotNewPassword" placeholder="At least 6 characters" required minlength="6" />
+      <!-- Step 2: enter the code + new password -->
+      <div id="forgotStep2">
+        <p style="font-size:13px; color:#666; margin-bottom:16px;">Enter the 6-digit code we emailed you, and choose a new password.</p>
+        <label>Reset Code</label>
+        <input type="text" id="forgotOtp" placeholder="123456" maxlength="6" />
+        <label>New Password</label>
+        <input type="password" id="forgotNewPassword" placeholder="At least 6 characters" minlength="6" />
+        <button type="button" class="submit" id="forgotVerifyBtn">Reset Password</button>
+      </div>
 
-      <button type="submit" class="submit" id="forgotSubmitBtn">Reset Password</button>
-      <div id="forgotMessage" style="margin-top:14px; text-align:center; display:none; font-weight:600;"></div>
+      <div id="forgotMessage"></div>
       <p style="text-align:center; margin-top:14px;"><a href="#" id="cancelForgot" style="font-size:13px; color:#666; font-weight:600;">Back to sign in</a></p>
     </form>
   </div>
@@ -441,9 +423,7 @@
 
             setTimeout(() => {
               const role = data.user.role;
-              window.location.href = role === 'driver'
-                ? 'driver-simulator.html'
-                : 'index.html';
+              window.location.href = role === 'driver' ? 'driver-simulator.html' : 'index.html';
             }, 700);
           })
           .catch(err => {
@@ -488,9 +468,7 @@
             showMessage('Account created! Redirecting...', 'success');
 
             setTimeout(() => {
-              window.location.href = selectedRole === 'driver'
-                ? 'driver-simulator.html'
-                : 'index.html';
+              window.location.href = selectedRole === 'driver' ? 'driver-simulator.html' : 'index.html';
             }, 900);
           })
           .catch(err => {
@@ -501,84 +479,130 @@
       }
     });
 
-    // ---- Forgot password ----
+    // ---- Forgot password (two-step: request code, then verify + reset) ----
     const authForm = document.getElementById('authForm');
+    const authAlternatives = document.getElementById('authAlternatives');
     const forgotPasswordForm = document.getElementById('forgotPasswordForm');
     const forgotPasswordLink = document.getElementById('forgotPasswordLink');
     const cancelForgot = document.getElementById('cancelForgot');
-    const forgotSubmitBtn = document.getElementById('forgotSubmitBtn');
+    const forgotStep1 = document.getElementById('forgotStep1');
+    const forgotStep2 = document.getElementById('forgotStep2');
+    const forgotRequestBtn = document.getElementById('forgotRequestBtn');
+    const forgotVerifyBtn = document.getElementById('forgotVerifyBtn');
     const forgotMessage = document.getElementById('forgotMessage');
+    let forgotIdentifierValue = '';
+
+    function showForgotMessage(text, type) {
+      forgotMessage.textContent = text;
+      forgotMessage.className = type;
+      forgotMessage.style.display = 'block';
+    }
 
     forgotPasswordLink.addEventListener('click', function (e) {
       e.preventDefault();
       authForm.style.display = 'none';
       document.querySelector('.auth-toggle').style.display = 'none';
-      document.getElementById('authAlternatives').style.display = 'none';
+      authAlternatives.style.display = 'none';
+      forgotStep1.style.display = 'block';
+      forgotStep2.style.display = 'none';
       forgotPasswordForm.style.display = 'block';
     });
 
     cancelForgot.addEventListener('click', function (e) {
       e.preventDefault();
       forgotPasswordForm.style.display = 'none';
+      forgotPasswordForm.reset();
+      forgotMessage.style.display = 'none';
       document.querySelector('.auth-toggle').style.display = 'flex';
-      document.getElementById('authAlternatives').style.display = 'block';
+      authAlternatives.style.display = 'block';
       authForm.style.display = 'block';
     });
 
+    // Step 1 submit: request a code
     forgotPasswordForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      forgotSubmitBtn.disabled = true;
-      forgotSubmitBtn.textContent = 'Resetting...';
+      if (forgotStep2.style.display === 'block') return; // step 2 has its own button, not this submit
+
+      forgotRequestBtn.disabled = true;
+      forgotRequestBtn.textContent = 'Sending...';
       forgotMessage.style.display = 'none';
 
-      const payload = {
-        identifier: document.getElementById('forgotIdentifier').value.trim(),
-        new_password: document.getElementById('forgotNewPassword').value
-      };
+      forgotIdentifierValue = document.getElementById('forgotIdentifier').value.trim();
 
-      fetch(`${API_BASE}/api/auth/forgot-password`, {
+      fetch(`${API_BASE}/api/auth/forgot-password/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ identifier: forgotIdentifierValue })
       })
         .then(res => res.json().then(data => ({ ok: res.ok, data })))
         .then(({ ok, data }) => {
-          forgotSubmitBtn.disabled = false;
-          forgotSubmitBtn.textContent = 'Reset Password';
+          forgotRequestBtn.disabled = false;
+          forgotRequestBtn.textContent = 'Send Reset Code';
 
           if (!ok) {
-            forgotMessage.textContent = data.error || 'Could not reset password';
-            forgotMessage.className = 'error';
-            forgotMessage.style.display = 'block';
+            showForgotMessage(data.error || 'Could not send reset code', 'error');
             return;
           }
 
-          forgotMessage.textContent = 'Password reset! You can sign in now.';
-          forgotMessage.className = 'success';
-          forgotMessage.style.display = 'block';
+          showForgotMessage(data.message || 'If an account exists, a code has been sent.', 'success');
+          forgotStep1.style.display = 'none';
+          forgotStep2.style.display = 'block';
+        })
+        .catch(err => {
+          forgotRequestBtn.disabled = false;
+          forgotRequestBtn.textContent = 'Send Reset Code';
+          showForgotMessage('Network error: ' + err.message, 'error');
+        });
+    });
+
+    // Step 2: verify code + set new password
+    forgotVerifyBtn.addEventListener('click', function () {
+      const otp = document.getElementById('forgotOtp').value.trim();
+      const newPassword = document.getElementById('forgotNewPassword').value;
+
+      if (!otp || !newPassword) {
+        showForgotMessage('Please enter the code and a new password.', 'error');
+        return;
+      }
+
+      forgotVerifyBtn.disabled = true;
+      forgotVerifyBtn.textContent = 'Resetting...';
+
+      fetch(`${API_BASE}/api/auth/forgot-password/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: forgotIdentifierValue, otp, new_password: newPassword })
+      })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          forgotVerifyBtn.disabled = false;
+          forgotVerifyBtn.textContent = 'Reset Password';
+
+          if (!ok) {
+            showForgotMessage(data.error || 'Could not reset password', 'error');
+            return;
+          }
+
+          showForgotMessage('Password reset! You can sign in now.', 'success');
 
           setTimeout(() => {
             forgotPasswordForm.reset();
             forgotPasswordForm.style.display = 'none';
+            forgotMessage.style.display = 'none';
             document.querySelector('.auth-toggle').style.display = 'flex';
+            authAlternatives.style.display = 'block';
             authForm.style.display = 'block';
           }, 1500);
         })
         .catch(err => {
-          forgotSubmitBtn.disabled = false;
-          forgotSubmitBtn.textContent = 'Reset Password';
-          forgotMessage.textContent = 'Network error: ' + err.message;
-          forgotMessage.className = 'error';
-          forgotMessage.style.display = 'block';
+          forgotVerifyBtn.disabled = false;
+          forgotVerifyBtn.textContent = 'Reset Password';
+          showForgotMessage('Network error: ' + err.message, 'error');
         });
     });
 
     // ---- Google Sign-In ----
-    // Called automatically by Google's script once the user picks an account.
     function handleGoogleSignIn(response) {
-      // response.credential is a signed JWT from Google containing the user's identity.
-      // Decoding it here client-side is fine for reading basic profile info (this is not
-      // a secure verification step — for production, verify the token server-side instead).
       const payloadBase64 = response.credential.split('.')[1];
       const decoded = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
 

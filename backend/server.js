@@ -1,23 +1,100 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
+const nodemailer = require('nodemailer');
 const pool = require('./db');
 
 const app = express();
-app.use(cors());
+
+// ---- CORS whitelist ----
+// During development this is permissive (reflects any origin) so localhost, LAN
+// testing, and changing ngrok URLs all keep working without edits. Once you have
+// a real domain, set ALLOWED_ORIGINS in .env (comma-separated) to lock this down,
+// e.g. ALLOWED_ORIGINS=https://hitchwithus.co.za,https://www.hitchwithus.co.za
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : null;
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!allowedOrigins) {
+      // No whitelist configured yet — allow all (dev mode)
+      return callback(null, true);
+    }
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  }
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// Serve the frontend files (index.html, driver-simulator.html, etc.) from this same server,
-// so there's only one server/port to run and expose — instead of a separate http-server on 8080
+// Serve the frontend files (index.html, driver-simulator.html, etc.) from this same server
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: allowedOrigins || '*'
+  }
 });
+
+// ---- Rate limiting on auth endpoints ----
+// Limits brute-force attempts on login, and spam on register/forgot-password.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { error: 'Too many accounts created from this device. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many password reset attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// ---- Email transport for OTP codes ----
+// Requires SMTP_USER / SMTP_PASS in .env. For Gmail: enable 2FA on the account,
+// then generate an "App Password" (myaccount.google.com/apppasswords) — do not
+// use your normal Gmail password here.
+let transporter = null;
+if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+}
+
+// In-memory OTP store: identifier -> { code, userId, expiresAt }
+// Resets if the server restarts — fine for a password-reset code that's only
+// valid for a few minutes anyway.
+const otpStore = new Map();
+
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 app.get('/', (req, res) => {
   res.send('Hitchhike backend is running');
@@ -32,7 +109,9 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+// ---------------- AUTH ----------------
+
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const { full_name, phone_number, email, password, role, vehicle } = req.body;
 
   if (!full_name || !phone_number || !password || !role) {
@@ -60,7 +139,6 @@ app.post('/api/auth/register', async (req, res) => {
     );
     const user = userResult.rows[0];
 
-    // If registering as a driver (or both) and vehicle details were provided, create the vehicle + session too
     if ((role === 'driver' || role === 'both') && vehicle && vehicle.make) {
       const vehicleResult = await pool.query(
         `INSERT INTO vehicles (driver_id, make, model, color, license_plate)
@@ -79,8 +157,8 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
-  const { identifier, password } = req.body; // identifier = phone number OR email
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
+  const { identifier, password } = req.body;
 
   if (!identifier || !password) {
     return res.status(400).json({ error: 'Phone number/email and password are required' });
@@ -144,29 +222,80 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 });
 
-// NOTE: this is a simplified "forgot password" flow with no OTP/email verification step —
-// anyone who knows the phone number or email can reset the password. Fine for a personal
-// test project, but not secure enough for a real public app (would need a verification
-// code sent via SMS or email before allowing the reset).
-app.post('/api/auth/forgot-password', async (req, res) => {
-  const { identifier, new_password } = req.body;
+// ---- Forgot password, now with a real OTP step ----
+// Step 1: request a code (emailed to the account's address, if one is on file)
+app.post('/api/auth/forgot-password/request-otp', forgotPasswordLimiter, async (req, res) => {
+  const { identifier } = req.body;
 
-  if (!identifier || !new_password) {
-    return res.status(400).json({ error: 'identifier (phone or email) and new_password are required' });
+  if (!identifier) {
+    return res.status(400).json({ error: 'identifier (phone or email) is required' });
+  }
+
+  try {
+    const result = await pool.query('SELECT id, email FROM users WHERE phone_number = $1 OR email = $1', [identifier]);
+
+    // Always respond the same way whether or not the account exists, so this
+    // endpoint can't be used to check which phone numbers/emails are registered.
+    const genericResponse = { success: true, message: 'If an account exists and has an email on file, a code has been sent.' };
+
+    if (result.rows.length === 0) {
+      return res.json(genericResponse);
+    }
+
+    const user = result.rows[0];
+
+    if (!user.email) {
+      return res.json(genericResponse); // no email on file — nothing we can send to
+    }
+
+    if (!transporter) {
+      return res.status(500).json({ error: 'Email sending is not configured on the server (missing SMTP_USER/SMTP_PASS)' });
+    }
+
+    const code = generateOtp();
+    otpStore.set(identifier, { code, userId: user.id, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 min expiry
+
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: user.email,
+      subject: 'Your Hitch With Us password reset code',
+      text: `Your password reset code is: ${code}\n\nThis code expires in 10 minutes. If you didn't request this, you can ignore this email.`
+    });
+
+    res.json(genericResponse);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Step 2: verify the code and set the new password
+app.post('/api/auth/forgot-password/verify', forgotPasswordLimiter, async (req, res) => {
+  const { identifier, otp, new_password } = req.body;
+
+  if (!identifier || !otp || !new_password) {
+    return res.status(400).json({ error: 'identifier, otp, and new_password are required' });
   }
   if (new_password.length < 6) {
     return res.status(400).json({ error: 'New password must be at least 6 characters' });
   }
 
+  const record = otpStore.get(identifier);
+
+  if (!record) {
+    return res.status(400).json({ error: 'No reset code was requested for this account, or it already expired' });
+  }
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(identifier);
+    return res.status(400).json({ error: 'This code has expired. Please request a new one.' });
+  }
+  if (record.code !== otp) {
+    return res.status(400).json({ error: 'Incorrect code' });
+  }
+
   try {
-    const result = await pool.query('SELECT id FROM users WHERE phone_number = $1 OR email = $1', [identifier]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'No account found with that phone number or email' });
-    }
-
     const newHash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, result.rows[0].id]);
-
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, record.userId]);
+    otpStore.delete(identifier);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -175,9 +304,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
 app.post('/api/auth/google', async (req, res) => {
   const { email, full_name, google_id, role } = req.body;
-  // NOTE: In this simplified version, the frontend verifies the Google token client-side
-  // via Google Identity Services and sends us the decoded profile. For production use,
-  // verify the ID token server-side with google-auth-library instead of trusting the client.
 
   if (!email || !google_id) {
     return res.status(400).json({ error: 'email and google_id are required' });
@@ -187,13 +313,10 @@ app.post('/api/auth/google', async (req, res) => {
     let result = await pool.query('SELECT id, phone_number, email, full_name, role FROM users WHERE google_id = $1 OR email = $2', [google_id, email]);
 
     if (result.rows.length > 0) {
-      // Existing user — make sure google_id is linked
       await pool.query('UPDATE users SET google_id = $1 WHERE id = $2', [google_id, result.rows[0].id]);
       return res.json({ user: result.rows[0] });
     }
 
-    // New user — create a minimal account. Phone number is required by the schema,
-    // so we use a placeholder the user can update later; role defaults to rider.
     const placeholderPhone = `google_${google_id}`;
     const insertResult = await pool.query(
       `INSERT INTO users (phone_number, email, full_name, role, google_id)
@@ -207,6 +330,8 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
+// ---------------- DRIVERS ----------------
+
 app.get('/api/drivers', async (req, res) => {
   const { lat, lng, radius_km } = req.query;
 
@@ -214,7 +339,6 @@ app.get('/api/drivers', async (req, res) => {
     let query, params;
 
     if (lat && lng && radius_km) {
-      // Haversine formula in a subquery, filtered with WHERE on the outer query
       query = `
         SELECT * FROM (
           SELECT ds.id, ds.driver_id, ds.current_lat, ds.current_lng, u.full_name, v.make, v.model, v.color, v.license_plate,
@@ -233,7 +357,6 @@ app.get('/api/drivers', async (req, res) => {
       `;
       params = [lat, lng, radius_km];
     } else {
-      // fallback: return all online drivers, no filtering
       query = `
         SELECT ds.id, ds.driver_id, ds.current_lat, ds.current_lng, u.full_name, v.make, v.model, v.color, v.license_plate
         FROM driver_sessions ds
@@ -270,6 +393,32 @@ app.get('/api/drivers/:driver_id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.patch('/api/driver-sessions/:driver_id/status', async (req, res) => {
+  const { driver_id } = req.params;
+  const { status } = req.body;
+
+  if (!['online', 'offline'].includes(status)) {
+    return res.status(400).json({ error: 'status must be online or offline' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE driver_sessions SET status = $1, last_updated_at = NOW() WHERE driver_id = $2 RETURNING *`,
+      [status, driver_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No driver session found for this driver' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------- RIDE REQUESTS ----------------
 
 app.post('/api/ride-requests', async (req, res) => {
   const { pickup_lat, pickup_lng, destination_lat, destination_lng, rider_id } = req.body;
@@ -336,7 +485,6 @@ app.post('/api/ride-requests/:id/accept', async (req, res) => {
 
     const rideRequest = result.rows[0];
 
-    // Fetch driver + vehicle details to send along with the notification
     const driverInfo = await pool.query(
       `SELECT u.full_name, v.make, v.model, v.color, v.license_plate
        FROM users u JOIN vehicles v ON v.driver_id = u.id
@@ -357,7 +505,7 @@ app.post('/api/ride-requests/:id/accept', async (req, res) => {
 
 app.patch('/api/ride-requests/:id/status', async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body; // expected: 'picked_up' or 'completed'
+  const { status } = req.body;
 
   try {
     const result = await pool.query(
@@ -370,30 +518,6 @@ app.patch('/api/ride-requests/:id/status', async (req, res) => {
     }
 
     io.emit('ride:statusUpdate', { id: parseInt(id), status });
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.patch('/api/driver-sessions/:driver_id/status', async (req, res) => {
-  const { driver_id } = req.params;
-  const { status } = req.body; // expected: 'online' or 'offline'
-
-  if (!['online', 'offline'].includes(status)) {
-    return res.status(400).json({ error: 'status must be online or offline' });
-  }
-
-  try {
-    const result = await pool.query(
-      `UPDATE driver_sessions SET status = $1, last_updated_at = NOW() WHERE driver_id = $2 RETURNING *`,
-      [status, driver_id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'No driver session found for this driver' });
-    }
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -451,10 +575,11 @@ app.patch('/api/ride-requests/:id/cancel', async (req, res) => {
   }
 });
 
+// ---------------- REAL-TIME LOCATION ----------------
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  // A driver's app sends their location periodically
   socket.on('driver:location', async (data) => {
     const { driver_id, lat, lng } = data;
 
@@ -464,7 +589,6 @@ io.on('connection', (socket) => {
         [lat, lng, driver_id]
       );
 
-      // Broadcast the new location to everyone watching the map
       io.emit('driver:locationUpdate', { driver_id, lat, lng });
     } catch (err) {
       console.error('Error updating driver location:', err);
